@@ -1,4 +1,6 @@
 // App State
+const appConfig = window.APP_CONFIG || {};
+
 const state = {
     userLocation: null,
     locationName: '',
@@ -8,8 +10,11 @@ const state = {
         stops: 5,
         priceLevel: 'budget',
         neighborhood: '',
-        locationMode: 'gps'
+        locationMode: 'gps',
+        openNowOnly: true
     },
+    availablePubs: [],
+    planBCandidates: [],
     pubs: [],
     currentStopIndex: 0,
     checkedIn: [],
@@ -21,9 +26,16 @@ const state = {
 
 // Map instance
 let map = null;
+let currentPubCardTemplate = '';
+let googlePlacesLoaderPromise = null;
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
+    const cardEl = document.getElementById('currentPubCard');
+    if (cardEl) {
+        currentPubCardTemplate = cardEl.innerHTML;
+    }
+
     updateStepDots(1);
     updateStepNav(1);
     toggleLocationModeUI();
@@ -55,13 +67,32 @@ function initEventListeners() {
     document.querySelectorAll('.step-nav-btn[data-step-nav]').forEach(btn => {
         btn.addEventListener('click', onStepNavClick);
     });
+    const openNowToggle = document.getElementById('openNowToggle');
+    if (openNowToggle) {
+        openNowToggle.addEventListener('change', (e) => {
+            state.settings.openNowOnly = e.target.checked;
+        });
+    }
     
     // Crawl screen
-    document.getElementById('checkInBtn').addEventListener('click', checkIn);
-    document.getElementById('openMapsBtn').addEventListener('click', openInMaps);
+    bindCrawlActionButtons();
     document.getElementById('endCrawlBtn').addEventListener('click', endCrawl);
+    const closePlanBBtn = document.getElementById('closePlanBBtn');
+    if (closePlanBBtn) {
+        closePlanBBtn.addEventListener('click', closePlanBModal);
+    }
     
     // Group mode is intentionally disabled for now (single-leader flow only).
+}
+
+function bindCrawlActionButtons() {
+    const checkInBtn = document.getElementById('checkInBtn');
+    const planBBtn = document.getElementById('planBBtn');
+    const openMapsBtn = document.getElementById('openMapsBtn');
+
+    if (checkInBtn) checkInBtn.onclick = checkIn;
+    if (planBBtn) planBBtn.onclick = usePlanB;
+    if (openMapsBtn) openMapsBtn.onclick = openInMaps;
 }
 
 // ===== OPTION SELECTION =====
@@ -188,7 +219,7 @@ function showSetupSummary() {
     if (!chips) return;
 
     const stopLabels = { 3: '3 stopp', 5: '5 stopp', 7: '7 stopp' };
-    const priceLabels = { budget: '💰 Budget', medium: '💎 Medium', all: '🃏 Alla' };
+    const priceLabels = { budget: 'Låg', medium: 'Mellan', all: 'Alla' };
     const locationLabel = state.settings.locationMode === 'gps'
         ? '📍 Min plats'
         : '✏️ ' + (state.settings.neighborhood || 'Vald plats');
@@ -197,6 +228,7 @@ function showSetupSummary() {
         locationLabel,
         stopLabels[state.settings.stops] || state.settings.stops + ' stopp',
         priceLabels[state.settings.priceLevel] || state.settings.priceLevel,
+        state.settings.openNowOnly ? '🕒 Oppet nu' : '🕒 Alla oppettider',
         state.randomMode ? '🎲 Överraskning' : '🎯 Smart rutt'
     ].map(t => `<span class="chip">${t}</span>`).join('');
 }
@@ -377,75 +409,66 @@ async function startCrawl(randomize = false) {
 // ===== FIND PUBS USING OVERPASS API =====
 async function findPubs() {
     const { lat, lng } = state.userLocation;
-    const radius = 2000; // Search within 2km
-    
-    // Overpass query to find bars and pubs
-    const query = `
-        [out:json][timeout:25];
-        (
-            node["amenity"="bar"](around:${radius},${lat},${lng});
-            node["amenity"="pub"](around:${radius},${lat},${lng});
-            node["amenity"="nightclub"](around:${radius},${lat},${lng});
-        );
-        out body;
-    `;
-    
-    try {
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            body: query
-        });
-        
-        const data = await response.json();
-        
-        // Process results
-        const pubs = data.elements
-            .filter(element => element.tags && element.tags.name)
-            .map(element => ({
-                id: element.id,
-                name: element.tags.name,
-                lat: element.lat,
-                lon: element.lon,
-                address: formatAddress(element.tags),
-                type: element.tags.amenity,
-                openingHours: element.tags.opening_hours,
-                website: element.tags.website,
-                distance: calculateDistance(lat, lng, element.lat, element.lon)
-            }))
-            .filter(pub => pub.distance <= 2000) // Within 2km
-            .sort((a, b) => a.distance - b.distance);
-        
-        // Filter by price if budget (just take the closest ones as proxy for now)
-        if (state.settings.priceLevel === 'budget') {
-            // Budget: prioritize places closer to center/Södermalm area
-            state.pubs = pubs.slice(0, Math.min(pubs.length, 20));
-        } else {
-            state.pubs = pubs.slice(0, Math.min(pubs.length, 20));
+    let pubs = [];
+
+    // 1. Try AWS (Amazon Location Places V2) - most accurate
+    if (appConfig.awsVenueEndpoint) {
+        try {
+            pubs = await findPubsWithAws(lat, lng);
+        } catch (error) {
+            console.warn('AWS venue search unavailable, trying next source:', error);
         }
-        
-    } catch (error) {
-        console.error('Error fetching pubs:', error);
-        state.pubs = [];
     }
+
+    // 2. Fall back to Google Places if configured
+    if (pubs.length === 0) {
+        try {
+            pubs = await findPubsWithGooglePlaces(lat, lng);
+        } catch (error) {
+            console.warn('Google Places unavailable, falling back to OSM:', error);
+        }
+    }
+
+    // 3. Last resort: OSM/Overpass
+    if (pubs.length === 0) {
+        try {
+            pubs = await findPubsWithOsm(lat, lng);
+        } catch (error) {
+            console.error('Error fetching pubs:', error);
+            state.availablePubs = [];
+            state.pubs = [];
+            return;
+        }
+    }
+
+    // Optional filter: keep only places that are either open now or unknown state.
+    const openFiltered = state.settings.openNowOnly
+        ? pubs.filter(pub => pub.openStatus !== 'closed')
+        : pubs;
+    const priceFiltered = filterPubsByPrice(openFiltered, state.settings.priceLevel);
+
+    state.availablePubs = priceFiltered.slice(0, Math.min(priceFiltered.length, 30));
+    state.pubs = [...state.availablePubs];
 }
 
 // ===== ROUTE OPTIMIZATION =====
 function optimizeRoute() {
-    if (state.pubs.length === 0) return;
+    if (state.availablePubs.length === 0) return;
     
-    const numStops = Math.min(state.settings.stops, state.pubs.length);
+    const numStops = Math.min(state.settings.stops, state.availablePubs.length);
     const selected = [];
+    const pool = [...state.availablePubs];
     
     if (state.randomMode) {
         // Random mode: shuffle and pick random pubs
-        const shuffled = [...state.pubs].sort(() => Math.random() - 0.5);
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
         for (let i = 0; i < numStops && i < shuffled.length; i++) {
             selected.push(shuffled[i]);
         }
     } else {
         // Optimized mode: greedy algorithm for shortest path
         let currentPos = state.userLocation;
-        let available = [...state.pubs];
+        let available = [...pool];
         
         for (let i = 0; i < numStops; i++) {
             if (available.length === 0) break;
@@ -469,31 +492,13 @@ function optimizeRoute() {
         }
     }
     
-    // Calculate distances between stops
-    selected.forEach((pub, index) => {
-        if (index === 0) {
-            pub.distanceFromPrevious = calculateDistance(
-                state.userLocation.lat, 
-                state.userLocation.lng, 
-                pub.lat, 
-                pub.lon
-            );
-        } else {
-            pub.distanceFromPrevious = calculateDistance(
-                selected[index - 1].lat,
-                selected[index - 1].lon,
-                pub.lat,
-                pub.lon
-            );
-        }
-        pub.walkingTime = Math.ceil(pub.distanceFromPrevious / 80); // ~80m/min walking speed
-    });
-    
+    recomputeRouteMetrics(selected);
     state.pubs = selected;
 }
 
 // ===== CRAWL SCREEN =====
 function initCrawlScreen() {
+    ensureCurrentPubCardTemplate();
     state.currentStopIndex = 0;
     state.checkedIn = [];
     
@@ -501,6 +506,17 @@ function initCrawlScreen() {
     displayCurrentPub();
     displayNextPubs();
     initMap();
+}
+
+function ensureCurrentPubCardTemplate() {
+    const cardEl = document.getElementById('currentPubCard');
+    if (!cardEl) return;
+
+    // Always restore the original card markup before a new crawl starts.
+    if (currentPubCardTemplate) {
+        cardEl.innerHTML = currentPubCardTemplate;
+        bindCrawlActionButtons();
+    }
 }
 
 function updateProgress() {
@@ -517,18 +533,27 @@ function displayCurrentPub() {
     }
     
     const pub = state.pubs[state.currentStopIndex];
-    
-    document.getElementById('currentPubName').textContent = pub.name;
-    document.getElementById('currentPubAddress').textContent = pub.address || 'Stockholm';
-    document.getElementById('currentPubDistance').textContent = `📍 ${pub.distanceFromPrevious} m`;
-    document.getElementById('currentPubTime').textContent = `⏱ ${pub.walkingTime} min`;
-    document.getElementById('currentPubType').textContent = `🏷️ ${formatPubType(pub.type)}`;
+
+    setTextIfPresent('currentPubName', pub.name);
+    setTextIfPresent('currentPubAddress', pub.address || 'Stockholm');
+    setTextIfPresent('currentPubDistance', `📍 ${pub.distanceFromPrevious} m`);
+    setTextIfPresent('currentPubTime', `⏱ ${pub.walkingTime} min`);
+    setTextIfPresent('currentPubType', `🏷️ ${formatPubType(pub.type)}`);
+    setTextIfPresent('currentPubPrice', `💸 ${formatPriceLabel(pub.priceBucket)}`);
+    setTextIfPresent('currentPubOpen', `🕒 ${formatOpenLabel(pub.openStatus)}`);
     
     // Update pub type icon
     const icon = getPubTypeIcon(pub.type);
-    document.getElementById('currentPubTypeIcon').textContent = icon;
+    setTextIfPresent('currentPubTypeIcon', icon);
     
     updateMap();
+}
+
+function setTextIfPresent(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value;
+    }
 }
 
 function displayNextPubs() {
@@ -548,6 +573,8 @@ function displayNextPubs() {
             <div class="pub-details">
                 <span class="detail">📍 ${pub.distanceFromPrevious} m från föregående</span>
                 <span class="detail">⏱ ${pub.walkingTime} min</span>
+                <span class="detail">💸 ${formatPriceLabel(pub.priceBucket)}</span>
+                <span class="detail">🕒 ${formatOpenLabel(pub.openStatus)}</span>
             </div>
             ${isLocked ? '<p class="unlock-message">🔒 Låses upp efter nästa check-in</p>' : ''}
         `;
@@ -623,8 +650,77 @@ function completeCrawl() {
 
 function openInMaps() {
     const pub = state.pubs[state.currentStopIndex];
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${pub.lat},${pub.lon}`;
+    const destination = encodeURIComponent(`${pub.name}, ${pub.address || 'Stockholm'}`);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=walking`;
     window.open(url, '_blank');
+}
+
+function usePlanB() {
+    if (state.currentStopIndex >= state.pubs.length) return;
+
+    const routeIds = new Set(state.pubs.map(p => p.id));
+    const currentPub = state.pubs[state.currentStopIndex];
+    const prevPoint = state.currentStopIndex === 0
+        ? { lat: state.userLocation.lat, lon: state.userLocation.lng }
+        : state.pubs[state.currentStopIndex - 1];
+
+    const candidates = state.availablePubs
+        .filter(pub => !routeIds.has(pub.id) && pub.id !== currentPub.id)
+        .map(pub => ({
+            ...pub,
+            altDistance: calculateDistance(prevPoint.lat, prevPoint.lon, pub.lat, pub.lon)
+        }))
+        .sort((a, b) => a.altDistance - b.altDistance)
+        .slice(0, 3);
+
+    if (candidates.length === 0) {
+        alert('Ingen Plan B hittades inom dina val just nu.');
+        return;
+    }
+
+    state.planBCandidates = candidates;
+    renderPlanBOptions();
+    openPlanBModal();
+}
+
+function renderPlanBOptions() {
+    const container = document.getElementById('planBOptions');
+    if (!container) return;
+
+    container.innerHTML = '';
+    state.planBCandidates.forEach((pub, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn planb-option-btn';
+        btn.innerHTML = `
+            <strong>${pub.name}</strong>
+            <small>${pub.address || 'Stockholm'}</small>
+            <small>📍 ${pub.altDistance} m · 💸 ${formatPriceLabel(pub.priceBucket)} · 🕒 ${formatOpenLabel(pub.openStatus)}</small>
+        `;
+        btn.addEventListener('click', () => selectPlanB(index));
+        container.appendChild(btn);
+    });
+}
+
+function selectPlanB(index) {
+    const replacement = state.planBCandidates[index];
+    if (!replacement) return;
+
+    state.pubs[state.currentStopIndex] = { ...replacement };
+    recomputeRouteMetrics(state.pubs);
+    closePlanBModal();
+    displayCurrentPub();
+    displayNextPubs();
+    saveToLocalStorage();
+}
+
+function openPlanBModal() {
+    const modal = document.getElementById('planBModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closePlanBModal() {
+    const modal = document.getElementById('planBModal');
+    if (modal) modal.classList.remove('active');
 }
 
 function endCrawl() {
@@ -644,6 +740,7 @@ function resetSetupFlow() {
     state.settings.stops = 5;
     state.settings.priceLevel = 'budget';
     state.settings.locationMode = 'gps';
+    state.settings.openNowOnly = true;
     state.randomMode = false;
 
     showSetupStep(1);
@@ -667,6 +764,10 @@ function resetSetupFlow() {
     document.querySelectorAll('.route-card-btn[data-route-mode]').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.routeMode === 'smart');
     });
+    const openNowToggle = document.getElementById('openNowToggle');
+    if (openNowToggle) {
+        openNowToggle.checked = true;
+    }
 
     toggleLocationModeUI();
 
@@ -680,6 +781,7 @@ function resetSetupFlow() {
 
 function restartToSetup() {
     localStorage.removeItem('pubCrawlState');
+    state.availablePubs = [];
     state.pubs = [];
     state.currentStopIndex = 0;
     state.checkedIn = [];
@@ -1005,6 +1107,509 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return Math.round(R * c);
 }
 
+async function fetchOverpassData(query) {
+    const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter'
+    ];
+
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: query
+            });
+
+            if (!response.ok) {
+                throw new Error(`Overpass ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error('Overpass unavailable');
+}
+
+async function findPubsWithAws(lat, lng) {
+    const endpoint = appConfig.awsVenueEndpoint;
+    if (!endpoint) return [];
+
+    const url = `${endpoint}?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`AWS venue API error: ${response.status}`);
+    }
+    const venues = await response.json();
+    if (!Array.isArray(venues)) {
+        throw new Error('Unexpected response format from AWS venue API');
+    }
+    return venues
+        .filter(v => Number.isFinite(v.lat) && Number.isFinite(v.lon))
+        .sort((a, b) => a.distance - b.distance);
+}
+
+async function findPubsWithGooglePlaces(lat, lng) {
+    const apiKey = appConfig.googlePlacesApiKey;
+    if (!apiKey) {
+        return [];
+    }
+
+    await ensureGooglePlacesLoaded(apiKey);
+
+    if (!window.google?.maps?.places?.PlacesService) {
+        return [];
+    }
+
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    const placeTypes = ['bar', 'pub', 'night_club'];
+    const allResults = await Promise.all(placeTypes.map((type) => nearbySearch(service, {
+        location: new google.maps.LatLng(lat, lng),
+        radius: 2000,
+        type,
+    })));
+
+    return dedupeVenues(
+        allResults
+            .flat()
+            .map((place) => mapGooglePlaceToVenue(place, lat, lng))
+            .filter(Boolean)
+            .filter(pub => isLikelyPubVenue(pub))
+            .sort((a, b) => {
+                if (b.confidenceScore !== a.confidenceScore) {
+                    return b.confidenceScore - a.confidenceScore;
+                }
+                return a.distance - b.distance;
+            })
+    );
+}
+
+async function findPubsWithOsm(lat, lng) {
+    const radius = 2000;
+    const query = `
+        [out:json][timeout:25];
+        (
+            node["amenity"="bar"](around:${radius},${lat},${lng});
+            node["amenity"="pub"](around:${radius},${lat},${lng});
+            node["amenity"="nightclub"](around:${radius},${lat},${lng});
+            way["amenity"="bar"](around:${radius},${lat},${lng});
+            way["amenity"="pub"](around:${radius},${lat},${lng});
+            way["amenity"="nightclub"](around:${radius},${lat},${lng});
+            relation["amenity"="bar"](around:${radius},${lat},${lng});
+            relation["amenity"="pub"](around:${radius},${lat},${lng});
+            relation["amenity"="nightclub"](around:${radius},${lat},${lng});
+        );
+        out center tags;
+    `;
+
+    const data = await fetchOverpassData(query);
+
+    return dedupeVenues(
+        data.elements
+            .filter(element => element.tags && element.tags.name)
+            .map(element => ({
+                id: `${element.type}-${element.id}`,
+                name: element.tags.name,
+                lat: getElementLatitude(element),
+                lon: getElementLongitude(element),
+                address: formatAddress(element.tags),
+                type: element.tags.amenity,
+                openingHours: element.tags.opening_hours,
+                website: element.tags.website,
+                tags: element.tags,
+                priceBucket: estimatePriceBucket(element.tags),
+                openStatus: evaluateOpenStatus(element.tags.opening_hours),
+                confidenceScore: getVenueConfidenceScore(element.tags),
+                distance: calculateDistance(lat, lng, getElementLatitude(element), getElementLongitude(element))
+            }))
+            .filter(pub => Number.isFinite(pub.lat) && Number.isFinite(pub.lon))
+            .filter(pub => isLikelyPubVenue(pub))
+            .filter(pub => pub.distance <= 2000)
+            .sort((a, b) => {
+                if (b.confidenceScore !== a.confidenceScore) {
+                    return b.confidenceScore - a.confidenceScore;
+                }
+                return a.distance - b.distance;
+            })
+    );
+}
+
+function ensureGooglePlacesLoaded(apiKey) {
+    if (window.google?.maps?.places) {
+        return Promise.resolve();
+    }
+
+    if (googlePlacesLoaderPromise) {
+        return googlePlacesLoaderPromise;
+    }
+
+    googlePlacesLoaderPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&v=weekly`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Google Places library'));
+        document.head.appendChild(script);
+    });
+
+    return googlePlacesLoaderPromise;
+}
+
+function nearbySearch(service, request) {
+    return new Promise((resolve, reject) => {
+        service.nearbySearch(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+                resolve(results || []);
+                return;
+            }
+
+            if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                resolve([]);
+                return;
+            }
+
+            reject(new Error(`Google Places status: ${status}`));
+        });
+    });
+}
+
+function mapGooglePlaceToVenue(place, originLat, originLng) {
+    const lat = place.geometry?.location?.lat?.();
+    const lon = place.geometry?.location?.lng?.();
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return null;
+    }
+
+    const types = Array.isArray(place.types) ? place.types : [];
+    const type = types.includes('bar')
+        ? 'bar'
+        : types.includes('pub')
+            ? 'pub'
+            : types.includes('night_club')
+                ? 'nightclub'
+                : 'bar';
+
+    const tagLikeData = {
+        name: place.name || '',
+        website: place.website || '',
+        opening_hours: place.opening_hours?.weekday_text?.join('; ') || '',
+        'addr:street': place.vicinity || place.formatted_address || '',
+        price: mapGooglePriceLevel(place.price_level)
+    };
+
+    return {
+        id: `google-${place.place_id || normalizeVenueName(place.name)}`,
+        name: place.name || 'Okänd bar',
+        lat,
+        lon,
+        address: place.vicinity || place.formatted_address || 'Stockholm',
+        type,
+        openingHours: tagLikeData.opening_hours,
+        website: place.website,
+        tags: tagLikeData,
+        priceBucket: mapGooglePriceBucket(place.price_level),
+        openStatus: mapGoogleOpenStatus(place),
+        confidenceScore: getGoogleVenueConfidenceScore(place),
+        distance: calculateDistance(originLat, originLng, lat, lon)
+    };
+}
+
+function mapGooglePriceBucket(priceLevel) {
+    if (priceLevel === 0 || priceLevel === 1) return 'low';
+    if (priceLevel === 2) return 'medium';
+    if (priceLevel === 3 || priceLevel === 4) return 'high';
+    return 'unknown';
+}
+
+function mapGooglePriceLevel(priceLevel) {
+    const priceMap = {
+        0: '$',
+        1: '$',
+        2: '$$',
+        3: '$$$',
+        4: '$$$$'
+    };
+    return priceMap[priceLevel] || '';
+}
+
+function mapGoogleOpenStatus(place) {
+    const openNow = place.opening_hours?.open_now;
+    if (typeof openNow === 'boolean') {
+        return openNow ? 'open' : 'closed';
+    }
+    return 'unknown';
+}
+
+function getGoogleVenueConfidenceScore(place) {
+    let score = 4;
+
+    if (place.business_status === 'OPERATIONAL') score += 2;
+    if (place.opening_hours) score += 2;
+    if (typeof place.price_level === 'number') score += 1;
+    if (place.rating) score += 1;
+    if (place.user_ratings_total) score += 1;
+    if (place.vicinity || place.formatted_address) score += 1;
+
+    return score;
+}
+
+function getElementLatitude(element) {
+    return element.lat ?? element.center?.lat;
+}
+
+function getElementLongitude(element) {
+    return element.lon ?? element.center?.lon;
+}
+
+function isLikelyPubVenue(pub) {
+    const amenity = (pub.type || '').toLowerCase();
+    if (!['bar', 'pub', 'nightclub'].includes(amenity)) {
+        return false;
+    }
+
+    const haystack = [
+        pub.name,
+        pub.tags?.brand,
+        pub.tags?.operator,
+        pub.tags?.description,
+        pub.tags?.['addr:street']
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const blockedTerms = [
+        'apotek', 'pharmacy', 'sjukhus', 'hospital', 'clinic', 'klinik',
+        'vårdcentral', 'vardcentral', 'dentist', 'tand', 'optik', 'optician',
+        'skola', 'school', 'gymnasium', 'kontor', 'office', 'bibliotek', 'library'
+    ];
+
+    return !blockedTerms.some(term => haystack.includes(term));
+}
+
+function getVenueConfidenceScore(tags) {
+    let score = 0;
+
+    if (tags.opening_hours) score += 2;
+    if (tags.website || tags['contact:website']) score += 2;
+    if (tags.phone || tags['contact:phone']) score += 1;
+    if (tags['addr:street']) score += 1;
+    if (tags['addr:housenumber']) score += 1;
+    if (tags.cuisine || tags['drink:beer'] || tags['brewery']) score += 1;
+
+    const name = (tags.name || '').toLowerCase();
+    if (name.includes('bar') || name.includes('pub') || name.includes('bistro')) score += 1;
+
+    return score;
+}
+
+function dedupeVenues(pubs) {
+    const unique = [];
+
+    pubs.forEach((pub) => {
+        const normalizedName = normalizeVenueName(pub.name);
+        const existingIndex = unique.findIndex((candidate) => {
+            if (normalizeVenueName(candidate.name) !== normalizedName) {
+                return false;
+            }
+
+            return calculateDistance(candidate.lat, candidate.lon, pub.lat, pub.lon) < 40;
+        });
+
+        if (existingIndex === -1) {
+            unique.push(pub);
+            return;
+        }
+
+        const existing = unique[existingIndex];
+        if (pub.confidenceScore > existing.confidenceScore) {
+            unique[existingIndex] = pub;
+        }
+    });
+
+    return unique;
+}
+
+function normalizeVenueName(name) {
+    return (name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+function recomputeRouteMetrics(routePubs) {
+    routePubs.forEach((pub, index) => {
+        if (index === 0) {
+            pub.distanceFromPrevious = calculateDistance(
+                state.userLocation.lat,
+                state.userLocation.lng,
+                pub.lat,
+                pub.lon
+            );
+        } else {
+            pub.distanceFromPrevious = calculateDistance(
+                routePubs[index - 1].lat,
+                routePubs[index - 1].lon,
+                pub.lat,
+                pub.lon
+            );
+        }
+        pub.walkingTime = Math.ceil(pub.distanceFromPrevious / 80);
+    });
+}
+
+function estimatePriceBucket(tags) {
+    const rawPrice = (tags.price || tags['drink:price'] || '').toString().trim();
+    if (rawPrice) {
+        const symbolCount = (rawPrice.match(/[\$€£]/g) || []).length;
+        if (symbolCount >= 3) return 'high';
+        if (symbolCount === 2) return 'medium';
+        if (symbolCount === 1) return 'low';
+
+        const numeric = parseFloat(rawPrice.replace(',', '.').replace(/[^0-9.]/g, ''));
+        if (!Number.isNaN(numeric)) {
+            if (numeric <= 60) return 'low';
+            if (numeric <= 120) return 'medium';
+            return 'high';
+        }
+    }
+
+    const charge = parseFloat((tags.charge || '').toString().replace(',', '.').replace(/[^0-9.]/g, ''));
+    if (!Number.isNaN(charge)) {
+        if (charge <= 60) return 'low';
+        if (charge <= 120) return 'medium';
+        return 'high';
+    }
+
+    return 'unknown';
+}
+
+function filterPubsByPrice(pubs, priceLevel) {
+    const scored = pubs.map(pub => ({
+        ...pub,
+        priceScore: getPriceScore(pub.priceBucket, priceLevel),
+    }));
+
+    scored.sort((a, b) => {
+        if (a.priceScore !== b.priceScore) return a.priceScore - b.priceScore;
+        return a.distance - b.distance;
+    });
+
+    if (priceLevel === 'all') {
+        return scored;
+    }
+
+    // Keep primarily relevant price buckets but include unknowns as fallback.
+    const top = scored.filter(pub => pub.priceScore <= 1);
+    return top.length >= 8 ? top : scored;
+}
+
+function getPriceScore(bucket, level) {
+    const map = { low: 0, medium: 1, high: 2, unknown: 1 };
+    const target = level === 'budget' ? 0 : level === 'medium' ? 1 : 1;
+    return Math.abs((map[bucket] ?? 1) - target);
+}
+
+function evaluateOpenStatus(openingHours) {
+    if (!openingHours || typeof openingHours !== 'string') return 'unknown';
+
+    const value = openingHours.trim();
+    if (!value) return 'unknown';
+    if (value.includes('24/7')) return 'open';
+
+    const dayKeys = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    const currentDay = dayKeys[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const rules = value.split(';').map(r => r.trim()).filter(Boolean);
+    let hadDayRule = false;
+
+    for (const rule of rules) {
+        const hasDayToken = dayKeys.some(day => rule.includes(day));
+        let dayMatches = !hasDayToken;
+
+        if (hasDayToken) {
+            hadDayRule = true;
+            dayMatches = dayRuleMatches(rule, currentDay);
+        }
+
+        if (!dayMatches) continue;
+
+        if (/\boff\b/i.test(rule)) {
+            return 'closed';
+        }
+
+        const timeRanges = rule.match(/\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}/g);
+        if (!timeRanges || timeRanges.length === 0) {
+            return hasDayToken ? 'open' : 'unknown';
+        }
+
+        const isOpenNow = timeRanges.some((range) => {
+            const [startRaw, endRaw] = range.split('-').map(v => v.trim());
+            const start = toMinutes(startRaw);
+            const end = toMinutes(endRaw);
+            if (start <= end) {
+                return nowMinutes >= start && nowMinutes <= end;
+            }
+            return nowMinutes >= start || nowMinutes <= end;
+        });
+
+        if (isOpenNow) return 'open';
+    }
+
+    return hadDayRule ? 'closed' : 'unknown';
+}
+
+function dayRuleMatches(rule, currentDay) {
+    const dayParts = rule.match(/(Mo|Tu|We|Th|Fr|Sa|Su)(?:-(Mo|Tu|We|Th|Fr|Sa|Su))?/g) || [];
+    if (dayParts.length === 0) return false;
+
+    const dayOrder = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    const currentIndex = dayOrder.indexOf(currentDay);
+
+    return dayParts.some((part) => {
+        const [start, end] = part.split('-');
+        const startIndex = dayOrder.indexOf(start);
+        if (!end) return startIndex === currentIndex;
+
+        const endIndex = dayOrder.indexOf(end);
+        if (startIndex <= endIndex) {
+            return currentIndex >= startIndex && currentIndex <= endIndex;
+        }
+        return currentIndex >= startIndex || currentIndex <= endIndex;
+    });
+}
+
+function toMinutes(time) {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function formatPriceLabel(bucket) {
+    const labels = {
+        low: 'Låg',
+        medium: 'Mellan',
+        high: 'Hög',
+        unknown: 'Okänd',
+    };
+    return labels[bucket] || 'Okänd';
+}
+
+function formatOpenLabel(status) {
+    const labels = {
+        open: 'Öppet nu',
+        closed: 'Stängt nu',
+        unknown: 'Okänd status',
+    };
+    return labels[status] || 'Okänd status';
+}
+
 function formatAddress(tags) {
     const parts = [];
     if (tags['addr:street']) parts.push(tags['addr:street']);
@@ -1032,6 +1637,7 @@ function saveToLocalStorage() {
     const data = {
         userLocation: state.userLocation,
         settings: state.settings,
+        availablePubs: state.availablePubs,
         pubs: state.pubs,
         currentStopIndex: state.currentStopIndex,
         checkedIn: state.checkedIn,
@@ -1045,6 +1651,10 @@ function loadFromLocalStorage() {
     const saved = localStorage.getItem('pubCrawlState');
     if (saved) {
         const data = JSON.parse(saved);
+
+        if (data.settings && typeof data.settings.openNowOnly !== 'boolean') {
+            data.settings.openNowOnly = true;
+        }
         
         // Only restore if crawl is in progress
         if (data.pubs && data.pubs.length > 0 && data.currentStopIndex < data.pubs.length) {

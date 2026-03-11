@@ -24,7 +24,7 @@
                     </svg>
                 </div>
                 <h2>Ditt nästa kroghop väntar</h2>
-                <p class="hero-subtitle">Hitta, hoppa, checka in - vi skoter rutten at dig.</p>
+                <p class="hero-subtitle">Hitta, hoppa, checka in - vi sköter rutten åt dig.</p>
             </div>
 
             <div class="card glass setup-card">
@@ -83,6 +83,11 @@
                         <button class="option-btn" data-price="medium">Mellan</button>
                         <button class="option-btn" data-price="all">Alla</button>
                     </div>
+                    <label class="open-now-toggle" for="openNowToggle">
+                        <input type="checkbox" id="openNowToggle" checked>
+                        <span>Visa bara oppet nu</span>
+                    </label>
+                    <p class="price-disclaimer">Pris visas som uppskattning från öppna data och kan avvika i verkligheten.</p>
                 </div>
 
                 <!-- Step 4: Route mode -->
@@ -137,10 +142,16 @@
                     <span id="currentPubDistance" class="detail">📍 -</span>
                     <span id="currentPubTime" class="detail">⏱ -</span>
                     <span id="currentPubType" class="detail">🏷️ -</span>
+                    <span id="currentPubPrice" class="detail">💸 -</span>
+                    <span id="currentPubOpen" class="detail">🕒 -</span>
                 </div>
                 <button id="checkInBtn" class="primary-btn large glow pulse-btn">
                     <span class="btn-icon">✓</span>
                     Checka in
+                </button>
+                <button id="planBBtn" class="secondary-btn">
+                    <span class="btn-icon">🔁</span>
+                    Plan B (byt stopp)
                 </button>
                 <button id="openMapsBtn" class="secondary-btn">
                     <span class="btn-icon">🗺</span>
@@ -195,6 +206,16 @@
             </div>
         </div>
 
+        <!-- Plan B Modal -->
+        <div id="planBModal" class="modal">
+            <div class="modal-content">
+                <span id="closePlanBBtn" class="close">&times;</span>
+                <h2>Plan B alternativ</h2>
+                <p class="info-text">Valj ett nytt stopp istallet for nuvarande.</p>
+                <div id="planBOptions" class="planb-options"></div>
+            </div>
+        </div>
+
         <!-- Loading Overlay -->
         <div id="loadingOverlay" class="loading-overlay hidden">
             <div class="spinner"></div>
@@ -203,6 +224,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

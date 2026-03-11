@@ -37,9 +37,31 @@ Det är alltså inte en full real-time sync mellan olika enheter på samma sätt
 
 - HTML/CSS/JavaScript
 - Leaflet för karta
-- Overpass API för pubdata
+- Google Places som primär pubkälla om API-nyckel finns
+- Overpass API som fallback för pubdata
 - Nominatim för omvänd geokodning
 - localStorage för sparad state
+
+## Google Places
+
+Appen kan använda Google Places som primär källa för barer och pubar. Om ingen API-nyckel är satt används OpenStreetMap/Overpass automatiskt som fallback.
+
+1. Aktivera `Places API` och `Maps JavaScript API` i Google Cloud.
+2. Öppna `config.js` och sätt `googlePlacesApiKey`.
+3. Begränsa nyckeln till rätt domäner i Google Cloud Console.
+
+Exempel:
+
+```js
+window.APP_CONFIG = {
+	googlePlacesApiKey: 'DIN_API_NYCKEL'
+};
+```
+
+Rekommenderade begränsningar:
+
+- HTTP referrer restrictions till din GitHub Pages-domän och eventuell AWS-domän
+- API restrictions till `Places API` och `Maps JavaScript API`
 
 ## Köra lokalt
 

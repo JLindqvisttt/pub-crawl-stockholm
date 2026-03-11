@@ -1,0 +1,9 @@
+{
+  "name": "pub-search",
+  "version": "1.0.0",
+  "description": "Lambda function for Kroghoppen venue search via Amazon Location Places V2",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-geo-places": "^3.0.0"
+  }
+}
