@@ -37,6 +37,7 @@ async function findPubs() {
                 distance: calculateDistance(lat, lng, element.lat, element.lon)
             }))
             .filter(pub => !isPermanentlyClosed(pub))
+            .filter(pub => !isCurrentlyClosedNow(pub))
             .filter(pub => pub.distance <= 2000) // Within 2km
             .sort((a, b) => a.distance - b.distance);
 
@@ -50,6 +51,18 @@ async function findPubs() {
     } catch (error) {
         console.error('Error fetching pubs:', error);
         state.pubs = [];
+    }
+}
+
+// Returns true if opening_hours is parseable AND the place is closed right now.
+// Returns false if no hours data (unknown = assume could be open).
+function isCurrentlyClosedNow(pub) {
+    if (!pub.openingHours) return false;
+    try {
+        const oh = new opening_hours(pub.openingHours); // eslint-disable-line
+        return !oh.getState(); // getState() = true means open
+    } catch (e) {
+        return false; // Can't parse → don't filter out
     }
 }
 
