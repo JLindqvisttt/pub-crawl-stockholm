@@ -90,11 +90,14 @@ header h1 {
     color: #e0e7ff;
     background: linear-gradient(135deg, #6366F1, #8B5CF6);
     box-shadow: 0 6px 14px rgba(99, 102, 241, 0.35);
+    overflow: hidden;
 }
 
 .brand-icon svg {
+    display: block;
     width: 1.05rem;
     height: 1.05rem;
+    flex: 0 0 1.05rem;
 }
 
 @keyframes headerGlow {
@@ -725,11 +728,14 @@ button {
     box-shadow: 0 12px 26px rgba(99, 102, 241, 0.35);
     margin-bottom: 1rem;
     animation: bounce 2s ease-in-out infinite;
+    overflow: hidden;
 }
 
 .hero-icon svg {
+    display: block;
     width: 2.1rem;
     height: 2.1rem;
+    flex: 0 0 2.1rem;
 }
 
 @keyframes bounce {
@@ -834,7 +840,4 @@ button {
         font-size: 1.5rem;
     }
     
-    .hero-icon {
-        font-size: 3rem;
-    }
 }
