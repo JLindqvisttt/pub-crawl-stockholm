@@ -47,16 +47,7 @@ function initEventListeners() {
     document.getElementById('openMapsBtn').addEventListener('click', openInMaps);
     document.getElementById('endCrawlBtn').addEventListener('click', endCrawl);
     
-    // Group mode
-    document.getElementById('groupModeBtn').addEventListener('click', openGroupModal);
-    document.querySelector('.close').addEventListener('click', closeGroupModal);
-    document.getElementById('createGroupBtn').addEventListener('click', createGroup);
-    document.getElementById('joinGroupBtn').addEventListener('click', () => {
-        document.getElementById('createGroupSection').classList.add('hidden');
-        document.getElementById('joinGroupSection').classList.remove('hidden');
-    });
-    document.getElementById('joinGroupSubmitBtn').addEventListener('click', joinGroup);
-    document.getElementById('copyCodeBtn').addEventListener('click', copyGroupCode);
+    // Group mode is intentionally disabled for now (single-leader flow only).
 }
 
 // ===== OPTION SELECTION =====

@@ -266,6 +266,15 @@ button {
     transform: translateY(-2px);
 }
 
+.secondary-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    transform: none;
+}
+
 .secondary-btn.large {
     padding: 1rem 2rem;
     font-size: 1rem;
