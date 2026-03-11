@@ -65,19 +65,27 @@
                 <!-- Step 2: Stops + Price -->
                 <div class="setup-step step-hidden" data-step="2">
                     <p class="step-tag">Steg 2 av 3 - Antal stopp och pris</p>
-                    <h3 class="step-question">Hur många stopp?</h3>
-                    <div class="button-group stops-group">
-                        <button class="option-btn" data-stops="3"><span>3 stopp</span><small>Snabb runda</small></button>
-                        <button class="option-btn active" data-stops="5"><span>5 stopp</span><small>Lagom</small></button>
-                        <button class="option-btn" data-stops="7"><span>7 stopp</span><small>Full rulle</small></button>
+                    <h3 class="step-question">Ställ in rundan</h3>
+
+                    <div class="choice-panel">
+                        <p class="choice-label">Antal stopp</p>
+                        <div class="button-group stops-group">
+                            <button class="option-btn" data-stops="3"><span>3 stopp</span><small>Snabb runda</small></button>
+                            <button class="option-btn active" data-stops="5"><span>5 stopp</span><small>Lagom</small></button>
+                            <button class="option-btn" data-stops="7"><span>7 stopp</span><small>Full rulle</small></button>
+                        </div>
                     </div>
-                    <h3 class="step-question">Hur djup är plånboken?</h3>
-                    <div class="button-group">
-                        <button class="option-btn active" data-price="budget">Låg</button>
-                        <button class="option-btn" data-price="medium">Mellan</button>
-                        <button class="option-btn" data-price="all">Alla</button>
+
+                    <div class="choice-panel">
+                        <p class="choice-label">Prisnivå</p>
+                        <div class="button-group price-group">
+                            <button class="option-btn active" data-price="budget">Låg</button>
+                            <button class="option-btn" data-price="medium">Mellan</button>
+                            <button class="option-btn" data-price="all">Alla</button>
+                        </div>
                     </div>
-                    <button id="toRouteStepBtn" class="primary-btn large" style="margin-top: 1rem;">Vidare till rutt</button>
+
+                    <button id="toRouteStepBtn" class="primary-btn large setup-next-btn">Vidare till rutt</button>
                 </div>
 
                 <!-- Step 3: Route mode -->
