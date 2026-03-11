@@ -247,6 +247,13 @@ button {
     margin-right: 0.5rem;
 }
 
+.route-help-text {
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
 .secondary-btn {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-primary);

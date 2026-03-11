@@ -22,7 +22,7 @@
                 </span>
                 Kroghoppen
             </h1>
-            <button id="groupModeBtn" class="secondary-btn" disabled title="Kommer snart med serversync">👥 Gänget (snart)</button>
+            <button id="groupModeBtn" class="secondary-btn" disabled title="Kommer snart med serversync">Gänget (snart)</button>
         </header>
 
         <!-- Setup Screen -->
@@ -51,7 +51,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>🎯 Antal stopp:</label>
+                    <label>Antal stopp:</label>
                     <div class="button-group">
                         <button class="option-btn" data-stops="3">3 pubar</button>
                         <button class="option-btn active" data-stops="5">5 pubar</button>
@@ -60,7 +60,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>💰 Prisnivå:</label>
+                    <label>Prisnivå:</label>
                     <div class="button-group">
                         <button class="option-btn active" data-price="budget">Budget</button>
                         <button class="option-btn" data-price="medium">Medium</button>
@@ -69,7 +69,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>📍 Område (valfritt):</label>
+                    <label>Område (valfritt):</label>
                     <select id="neighborhoodFilter">
                         <option value="">Alla områden</option>
                         <option value="Södermalm">Södermalm</option>
@@ -83,14 +83,13 @@
 
                 <div class="button-row">
                     <button id="startCrawlBtn" class="primary-btn large glow" disabled>
-                        <span class="btn-icon">🎯</span>
-                        Starta hoppet!
+                        Smart rutt
                     </button>
                     <button id="randomCrawlBtn" class="secondary-btn large" disabled>
-                        <span class="btn-icon">🎲</span>
-                        Slumpa rutt
+                        Överraskningsrutt
                     </button>
                 </div>
+                <p class="route-help-text">Smart rutt väljer närmsta logiska ordning. Överraskningsrutt blandar stoppen slumpmässigt.</p>
                 <p id="setupError" class="error-msg"></p>
             </div>
         </div>
