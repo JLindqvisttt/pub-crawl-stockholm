@@ -102,9 +102,9 @@ function getUserLocationAuto() {
             if (error.code === 1) {
                 detail = 'Du nekade platsåtkomst. Aktivera i webbläsarinställningar.';
             } else if (error.code === 2) {
-                detail = 'Position otillgänglig. Kontrollera din internetanslutning.';
+                detail = 'Position otillgänglig. Kontrollera anslutningen.';
             } else if (error.code === 3) {
-                detail = 'Timeout. Försök igen.';
+                detail = 'Timeout – försök igen.';
             }
             
             updateLocationStatus('error', errorMsg, detail);
@@ -145,9 +145,9 @@ async function reverseGeocode(lat, lng) {
             locationName = address.city_district;
         }
         
-        updateLocationStatus('success', '✓ Position hämtad', `Du är i ${locationName}`);
+        updateLocationStatus('success', '✓ Redo att hoppa!', `Du är i ${locationName}`);
     } catch (error) {
-        updateLocationStatus('success', '✓ Position hämtad', 'Redo att hitta pubar!');
+        updateLocationStatus('success', '✓ Redo att hoppa!', 'GPS hittad!');
     }
 }
 
@@ -178,7 +178,7 @@ async function startCrawl(randomize = false) {
         
         if (state.pubs.length === 0) {
             hideLoading();
-            showError('Inga pubar hittades i närheten. Prova ett annat område.');
+            showError('Inga krogar hittades i närheten. Prova ett annat område.');
             return;
         }
         
@@ -439,10 +439,10 @@ function completeCrawl() {
     document.getElementById('currentPubCard').innerHTML = `
         <div style="text-align: center; padding: 2rem 0;">
             <h2 style="font-size: 3rem; margin-bottom: 1rem;">🎉</h2>
-            <h2>Grattis!</h2>
-            <p>Du har klarat hela pub crawlen!</p>
+            <h2>Nattens hjälte!</h2>
+            <p>Du har klämt i alla stopp – det kallas kroghopp.</p>
             <button onclick="location.reload()" class="primary-btn large" style="margin-top: 2rem;">
-                Starta ny crawl
+                Starta nytt hopp
             </button>
         </div>
     `;
@@ -456,7 +456,7 @@ function openInMaps() {
 }
 
 function endCrawl() {
-    if (confirm('Är du säker på att du vill avsluta denna crawl?')) {
+    if (confirm('Avsluta och gå hem? 😔')) {
         localStorage.removeItem('pubCrawlState');
         switchScreen('setupScreen');
         state.pubs = [];
@@ -721,7 +721,7 @@ function generateGroupCode() {
 function copyGroupCode() {
     const code = document.getElementById('groupCode').textContent;
     navigator.clipboard.writeText(code).then(() => {
-        alert('Gruppkod kopierad!');
+        alert('Gruppkod kopierad! 🍻');
     });
 }
 
@@ -825,7 +825,7 @@ function loadFromLocalStorage() {
         
         // Only restore if crawl is in progress
         if (data.pubs && data.pubs.length > 0 && data.currentStopIndex < data.pubs.length) {
-            if (confirm('Du har en pågående crawl. Vill du fortsätta?')) {
+            if (confirm('Du har ett pågående hopp. Fortsätta?')) {
                 Object.assign(state, data);
                 switchScreen('crawlScreen');
                 initCrawlScreen();
