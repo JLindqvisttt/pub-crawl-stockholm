@@ -4,27 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kroghoppen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
-        <header>
-            <h1>
-                <span class="brand-icon" aria-hidden="true">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 6h9v10a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                        <path d="M14 8h2.3a2.7 2.7 0 0 1 0 5.4H14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M5 10h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M8 3v2M11 3v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                </span>
-                Kroghoppen
-            </h1>
-            <button id="groupModeBtn" class="secondary-btn" disabled title="Kommer snart med serversync">👥 Gänget (snart)</button>
-        </header>
-
         <!-- Setup Screen -->
         <div id="setupScreen" class="screen active">
             <div class="welcome-hero">
@@ -37,61 +24,93 @@
                     </svg>
                 </div>
                 <h2>Ditt nästa kroghop väntar</h2>
-                <p class="hero-subtitle">Hitta, hoppa, checka in – vi sköter rutten åt dig.</p>
+                <p class="hero-subtitle">Hitta, hoppa, checka in - vi skoter rutten at dig.</p>
             </div>
-            
-            <div class="card glass">
-                <p class="info-text" style="margin-bottom: 1rem;">Just nu styr en person rundan och resten följer samma stoppordning.</p>
-                <div class="location-status" id="locationStatus">
-                    <div class="status-icon">📍</div>
-                    <div class="status-text">
-                        <span id="locationText">Hämtar din position...</span>
-                        <span id="locationDetail" class="location-detail"></span>
+
+            <div class="card glass setup-card">
+                <div class="setup-step-nav" aria-label="Steg">
+                    <button class="step-nav-btn is-active" data-step-nav="1">1. Plats</button>
+                    <button class="step-nav-btn is-locked" data-step-nav="2">2. Stopp</button>
+                    <button class="step-nav-btn is-locked" data-step-nav="3">3. Pris</button>
+                    <button class="step-nav-btn is-locked" data-step-nav="4">4. Rutt</button>
+                </div>
+
+                <!-- Level complete overlay -->
+                <div id="levelCompleteOverlay" class="lc-overlay hidden">
+                    <div class="lc-check">✓</div>
+                    <p class="lc-text">Steg <span id="lcStepNum">1</span> klar!</p>
+                </div>
+
+                <!-- Step 1: Location -->
+                <div class="setup-step" data-step="1">
+                    <p class="step-tag">Steg 1 av 4 — Startplats</p>
+                    <h3 class="step-question">Var vill du starta?</h3>
+                    <div class="button-group">
+                        <button class="option-btn active" data-location-mode="gps">📍 Min plats</button>
+                        <button class="option-btn" data-location-mode="custom">✏️ Välj ställe</button>
+                    </div>
+                    <div id="customLocationWrapper" class="custom-location-wrapper hidden">
+                        <label for="customLocationInput">Skriv stadsdel eller adress:</label>
+                        <input type="text" id="customLocationInput" placeholder="t.ex. Hornstull, Stockholm">
+                        <button id="applyCustomLocationBtn" class="secondary-btn">Bekräfta plats</button>
+                    </div>
+                    <div class="location-status" id="locationStatus">
+                        <div class="status-icon">📍</div>
+                        <div class="status-text">
+                            <span id="locationText">Tryck Min plats eller valj eget stalle</span>
+                            <span id="locationDetail" class="location-detail"></span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>🎯 Antal stopp:</label>
-                    <div class="button-group">
-                        <button class="option-btn" data-stops="3">3 pubar</button>
-                        <button class="option-btn active" data-stops="5">5 pubar</button>
-                        <button class="option-btn" data-stops="7">7 pubar</button>
+                <!-- Step 2: Stops -->
+                <div class="setup-step step-hidden" data-step="2">
+                    <p class="step-tag">Steg 2 av 4 — Antal stopp</p>
+                    <h3 class="step-question">Hur många stopp?</h3>
+                    <div class="button-group stops-group">
+                        <button class="option-btn" data-stops="3"><span>3 stopp</span><small>Snabb runda</small></button>
+                        <button class="option-btn active" data-stops="5"><span>5 stopp</span><small>Lagom</small></button>
+                        <button class="option-btn" data-stops="7"><span>7 stopp</span><small>Full rulle</small></button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>💰 Prisnivå:</label>
+                <!-- Step 3: Price -->
+                <div class="setup-step step-hidden" data-step="3">
+                    <p class="step-tag">Steg 3 av 4 — Prisnivå</p>
+                    <h3 class="step-question">Hur djup är plånboken?</h3>
                     <div class="button-group">
-                        <button class="option-btn active" data-price="budget">Budget</button>
-                        <button class="option-btn" data-price="medium">Medium</button>
+                        <button class="option-btn active" data-price="budget">Låg</button>
+                        <button class="option-btn" data-price="medium">Mellan</button>
                         <button class="option-btn" data-price="all">Alla</button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>📍 Område (valfritt):</label>
-                    <select id="neighborhoodFilter">
-                        <option value="">Alla områden</option>
-                        <option value="Södermalm">Södermalm</option>
-                        <option value="Vasastan">Vasastan</option>
-                        <option value="Gamla Stan">Gamla Stan</option>
-                        <option value="Östermalm">Östermalm</option>
-                        <option value="Norrmalm">Norrmalm</option>
-                        <option value="Kungsholmen">Kungsholmen</option>
-                    </select>
+                <!-- Step 4: Route mode -->
+                <div class="setup-step step-hidden" data-step="4">
+                    <p class="step-tag">Steg 4 av 4 — Spelstil</p>
+                    <h3 class="step-question">Smart eller vild?</h3>
+                    <div class="route-mode-cards">
+                        <button class="route-card-btn active" data-route-mode="smart">
+                            <span class="rmc-icon">🎯</span>
+                            <strong>Smart rutt</strong>
+                            <small>Kortaste logiska ordning</small>
+                        </button>
+                        <button class="route-card-btn" data-route-mode="random">
+                            <span class="rmc-icon">🎲</span>
+                            <strong>Överraskning</strong>
+                            <small>Blandar stoppen slumpmässigt</small>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="button-row">
-                    <button id="startCrawlBtn" class="primary-btn large glow" disabled>
-                        <span class="btn-icon">🎯</span>
-                        Smart rutt
-                    </button>
-                    <button id="randomCrawlBtn" class="secondary-btn large" disabled>
-                        <span class="btn-icon">🎲</span>
-                        Överraskningsrutt
+                <!-- Summary + Start -->
+                <div id="setupSummary" class="setup-summary step-hidden">
+                    <div class="summary-chips" id="summaryChips"></div>
+                    <button id="startRunBtn" class="primary-btn large glow">
+                        <span class="btn-icon">🚀</span> Starta rundan!
                     </button>
                 </div>
-                <p class="route-help-text">Smart rutt väljer närmsta logiska ordning. Överraskningsrutt blandar stoppen slumpmässigt.</p>
+
                 <p id="setupError" class="error-msg"></p>
             </div>
         </div>
@@ -140,7 +159,7 @@
 
             <!-- Action Buttons -->
             <div class="action-buttons">
-                <button id="endCrawlBtn" class="secondary-btn">Avsluta crawl</button>
+                <button id="endCrawlBtn" class="secondary-btn danger-btn">Avsluta crawl</button>
             </div>
         </div>
 
@@ -158,7 +177,7 @@
                 <div id="createGroupSection" class="hidden">
                     <p>Din gruppkod:</p>
                     <div class="group-code-display">
-                        <span id="groupCode">-</span>
+                        <span id="groupCode">-</span> 
                         <button id="copyCodeBtn" class="icon-btn">📋</button>
                     </div>
                     <p class="info-text">Dela denna kod med dina vänner!</p>

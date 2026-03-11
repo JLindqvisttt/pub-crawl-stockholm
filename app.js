@@ -1,10 +1,14 @@
 // App State
 const state = {
     userLocation: null,
+    locationName: '',
+    currentSetupStep: 1,
+    maxUnlockedStep: 1,
     settings: {
         stops: 5,
         priceLevel: 'budget',
-        neighborhood: ''
+        neighborhood: '',
+        locationMode: 'gps'
     },
     pubs: [],
     currentStopIndex: 0,
@@ -20,10 +24,11 @@ let map = null;
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
+    updateStepDots(1);
+    updateStepNav(1);
+    toggleLocationModeUI();
     initEventListeners();
     loadFromLocalStorage();
-    
-    // Auto-start GPS on load
     if (!state.userLocation) {
         getUserLocationAuto();
     }
@@ -31,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initEventListeners() {
     // Setup screen
-    document.getElementById('startCrawlBtn').addEventListener('click', () => startCrawl(false));
-    document.getElementById('randomCrawlBtn').addEventListener('click', () => startCrawl(true));
+    document.getElementById('startRunBtn').addEventListener('click', () => startCrawl(state.randomMode));
+    document.getElementById('applyCustomLocationBtn').addEventListener('click', applyCustomLocation);
     
     // Option buttons
     document.querySelectorAll('.option-btn[data-stops]').forEach(btn => {
@@ -40,6 +45,15 @@ function initEventListeners() {
     });
     document.querySelectorAll('.option-btn[data-price]').forEach(btn => {
         btn.addEventListener('click', (e) => selectOption(e, 'price'));
+    });
+    document.querySelectorAll('.route-card-btn[data-route-mode]').forEach(btn => {
+        btn.addEventListener('click', (e) => selectOption(e, 'routeMode'));
+    });
+    document.querySelectorAll('.option-btn[data-location-mode]').forEach(btn => {
+        btn.addEventListener('click', (e) => selectOption(e, 'locationMode'));
+    });
+    document.querySelectorAll('.step-nav-btn[data-step-nav]').forEach(btn => {
+        btn.addEventListener('click', onStepNavClick);
     });
     
     // Crawl screen
@@ -52,14 +66,186 @@ function initEventListeners() {
 
 // ===== OPTION SELECTION =====
 function selectOption(e, type) {
-    const buttons = e.target.parentElement.querySelectorAll('.option-btn');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    e.target.classList.add('active');
-    
+    if (type === 'routeMode') {
+        const btn = e.target.closest('.route-card-btn');
+        btn.closest('.route-mode-cards').querySelectorAll('.route-card-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.randomMode = btn.dataset.routeMode === 'random';
+        setTimeout(() => advanceToStep(5, 4), 350);
+        return;
+    }
+
+    // Use currentTarget so clicks on child <span>/<small> still read the right dataset
+    const clickedBtn = e.currentTarget;
+    clickedBtn.parentElement.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+    clickedBtn.classList.add('active');
+
     if (type === 'stops') {
-        state.settings.stops = parseInt(e.target.dataset.stops);
+        state.settings.stops = parseInt(clickedBtn.dataset.stops);
+        setTimeout(() => advanceToStep(3, 2), 350);
     } else if (type === 'price') {
-        state.settings.priceLevel = e.target.dataset.price;
+        state.settings.priceLevel = clickedBtn.dataset.price;
+        setTimeout(() => advanceToStep(4, 3), 350);
+    } else if (type === 'locationMode') {
+        state.settings.locationMode = clickedBtn.dataset.locationMode;
+        toggleLocationModeUI();
+        if (state.settings.locationMode === 'gps') {
+            state.settings.neighborhood = '';
+            if (state.userLocation) {
+                updateLocationStatus('success', 'Redo att hoppa!', 'GPS hittad. Fortsatt till steg 2.');
+                setTimeout(() => advanceToStep(2, 1), 220);
+            } else {
+                updateLocationStatus('loading', 'Hämtar din position...', '');
+                getUserLocationAuto();
+            }
+        } else {
+            state.userLocation = null;
+            state.settings.neighborhood = '';
+            updateLocationStatus('loading', 'Skriv in en plats och bekräfta', 'Adress eller stadsdel fungerar bra');
+        }
+    }
+}
+
+function advanceToStep(nextStep, fromStep) {
+    state.maxUnlockedStep = Math.max(state.maxUnlockedStep, Math.min(nextStep, 4));
+    state.currentSetupStep = nextStep;
+    const overlay = document.getElementById('levelCompleteOverlay');
+    document.getElementById('lcStepNum').textContent = fromStep;
+
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('lc-visible')));
+
+    setTimeout(() => {
+        if (nextStep <= 4) {
+            showSetupStep(nextStep);
+            updateStepDots(nextStep);
+            updateStepNav(nextStep);
+        } else {
+            showSetupSummary();
+            // All dots done
+            document.querySelectorAll('.sdot').forEach(d => {
+                d.classList.remove('sdot-active');
+                d.classList.add('sdot-done');
+            });
+            updateStepNav(4);
+        }
+    }, 620);
+
+    setTimeout(() => overlay.classList.remove('lc-visible'), 780);
+    setTimeout(() => overlay.classList.add('hidden'), 1080);
+}
+
+function showSetupStep(step) {
+    document.querySelectorAll('.setup-step[data-step]').forEach(el => el.classList.add('step-hidden'));
+    const target = document.querySelector(`.setup-step[data-step="${step}"]`);
+    if (target) {
+        target.classList.remove('step-hidden');
+    }
+    const summary = document.getElementById('setupSummary');
+    if (summary) {
+        summary.classList.add('step-hidden');
+    }
+    state.currentSetupStep = step;
+}
+
+function updateStepNav(activeStep) {
+    document.querySelectorAll('.step-nav-btn[data-step-nav]').forEach((btn) => {
+        const step = parseInt(btn.dataset.stepNav, 10);
+        const locked = step > state.maxUnlockedStep;
+
+        btn.classList.toggle('is-locked', locked);
+        btn.classList.toggle('is-done', !locked && step < activeStep);
+        btn.classList.toggle('is-active', !locked && step === activeStep);
+        btn.disabled = locked;
+    });
+}
+
+function onStepNavClick(e) {
+    const step = parseInt(e.currentTarget.dataset.stepNav, 10);
+    if (step > state.maxUnlockedStep) {
+        return;
+    }
+    showSetupStep(step);
+    updateStepDots(step);
+    updateStepNav(step);
+}
+
+function updateStepDots(activeStep) {
+    document.querySelectorAll('.sdot').forEach(dot => {
+        const n = parseInt(dot.dataset.dot);
+        dot.classList.toggle('sdot-active', n === activeStep);
+        dot.classList.toggle('sdot-done', n < activeStep);
+    });
+}
+
+function showSetupSummary() {
+    document.querySelectorAll('.setup-step[data-step]').forEach(el => el.classList.add('step-hidden'));
+
+    const summary = document.getElementById('setupSummary');
+    if (summary) summary.classList.remove('step-hidden');
+
+    const chips = document.getElementById('summaryChips');
+    if (!chips) return;
+
+    const stopLabels = { 3: '3 stopp', 5: '5 stopp', 7: '7 stopp' };
+    const priceLabels = { budget: '💰 Budget', medium: '💎 Medium', all: '🃏 Alla' };
+    const locationLabel = state.settings.locationMode === 'gps'
+        ? '📍 Min plats'
+        : '✏️ ' + (state.settings.neighborhood || 'Vald plats');
+
+    chips.innerHTML = [
+        locationLabel,
+        stopLabels[state.settings.stops] || state.settings.stops + ' stopp',
+        priceLabels[state.settings.priceLevel] || state.settings.priceLevel,
+        state.randomMode ? '🎲 Överraskning' : '🎯 Smart rutt'
+    ].map(t => `<span class="chip">${t}</span>`).join('');
+}
+
+function toggleLocationModeUI() {
+    const customWrap = document.getElementById('customLocationWrapper');
+    const isCustom = state.settings.locationMode === 'custom';
+    customWrap.classList.toggle('hidden', !isCustom);
+}
+
+async function applyCustomLocation() {
+    const query = document.getElementById('customLocationInput').value.trim();
+    if (!query) {
+        showError('Skriv in en plats innan du bekraftar.');
+        return;
+    }
+
+    updateLocationStatus('loading', 'Soker efter plats...', query);
+    showLoading();
+
+    try {
+        const endpoint = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+        const response = await fetch(endpoint);
+        const data = await response.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+            hideLoading();
+            updateLocationStatus('error', 'Ingen plats hittades', 'Prova en tydligare adress eller stadsdel');
+            showError('Kunde inte hitta platsen.');
+            return;
+        }
+
+        const place = data[0];
+        state.userLocation = {
+            lat: parseFloat(place.lat),
+            lng: parseFloat(place.lon)
+        };
+        state.settings.neighborhood = query;
+        state.locationName = place.display_name.split(',').slice(0, 2).join(', ');
+        updateLocationStatus('success', 'Plats vald!', state.locationName);
+        hideLoading();
+        showError('');
+        if (state.currentSetupStep === 1) {
+            advanceToStep(2, 1);
+        }
+    } catch (error) {
+        hideLoading();
+        updateLocationStatus('error', 'Fel vid platsval', 'Kontrollera anslutning och prova igen');
+        showError('Kunde inte geokoda platsen just nu.');
     }
 }
 
@@ -81,9 +267,7 @@ function getUserLocationAuto() {
             
             // Get address name
             reverseGeocode(position.coords.latitude, position.coords.longitude);
-            
-            document.getElementById('startCrawlBtn').disabled = false;
-            document.getElementById('randomCrawlBtn').disabled = false;
+
             document.getElementById('setupError').textContent = '';
         },
         (error) => {
@@ -136,9 +320,9 @@ async function reverseGeocode(lat, lng) {
             locationName = address.city_district;
         }
         
-        updateLocationStatus('success', '✓ Redo att hoppa!', `Du är i ${locationName}`);
+        updateLocationStatus('success', 'Redo att hoppa!', `Du ar i ${locationName}`);
     } catch (error) {
-        updateLocationStatus('success', '✓ Redo att hoppa!', 'GPS hittad!');
+        updateLocationStatus('success', 'Redo att hoppa!', 'GPS hittad!');
     }
 }
 
@@ -156,10 +340,7 @@ async function startCrawl(randomize = false) {
     }
     
     state.randomMode = randomize;
-    
-    // Get neighborhood filter
-    state.settings.neighborhood = document.getElementById('neighborhoodFilter').value;
-    
+
     // Show loading
     showLoading();
     
@@ -432,7 +613,7 @@ function completeCrawl() {
             <h2 style="font-size: 2.2rem; margin-bottom: 1rem;">Klart</h2>
             <h2>Nattens hjälte</h2>
             <p>Du har klämt i alla stopp – det kallas kroghopp.</p>
-            <button onclick="location.reload()" class="primary-btn large" style="margin-top: 2rem;">
+            <button onclick="restartToSetup()" class="primary-btn large" style="margin-top: 2rem;">
                 Starta nytt hopp
             </button>
         </div>
@@ -449,11 +630,61 @@ function openInMaps() {
 function endCrawl() {
     if (confirm('Avsluta och gå hem? 😔')) {
         localStorage.removeItem('pubCrawlState');
-        switchScreen('setupScreen');
         state.pubs = [];
         state.currentStopIndex = 0;
         state.checkedIn = [];
+        switchScreen('setupScreen');
+        resetSetupFlow();
     }
+}
+
+function resetSetupFlow() {
+    state.currentSetupStep = 1;
+    state.maxUnlockedStep = 1;
+    state.settings.stops = 5;
+    state.settings.priceLevel = 'budget';
+    state.settings.locationMode = 'gps';
+    state.randomMode = false;
+
+    showSetupStep(1);
+    updateStepDots(1);
+    updateStepNav(1);
+
+    document.getElementById('setupError').textContent = '';
+    document.getElementById('levelCompleteOverlay').classList.add('hidden');
+    document.getElementById('levelCompleteOverlay').classList.remove('lc-visible');
+
+    // Reset setup option UI state.
+    document.querySelectorAll('.option-btn[data-location-mode]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.locationMode === 'gps');
+    });
+    document.querySelectorAll('.option-btn[data-stops]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.stops === '5');
+    });
+    document.querySelectorAll('.option-btn[data-price]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.price === 'budget');
+    });
+    document.querySelectorAll('.route-card-btn[data-route-mode]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.routeMode === 'smart');
+    });
+
+    toggleLocationModeUI();
+
+    if (state.userLocation) {
+        updateLocationStatus('success', 'Redo att hoppa!', 'Tryck Min plats eller valj ett eget stalle.');
+    } else {
+        updateLocationStatus('loading', 'Hämtar din position...', '');
+        getUserLocationAuto();
+    }
+}
+
+function restartToSetup() {
+    localStorage.removeItem('pubCrawlState');
+    state.pubs = [];
+    state.currentStopIndex = 0;
+    state.checkedIn = [];
+    switchScreen('setupScreen');
+    resetSetupFlow();
 }
 
 // ===== MAP =====
@@ -827,3 +1058,4 @@ function loadFromLocalStorage() {
         }
     }
 }
+
