@@ -2,6 +2,50 @@ const { GeoPlacesClient, SearchNearbyCommand, SearchTextCommand } = require('@aw
 
 const client = new GeoPlacesClient({});
 
+// Terms that suggest a venue is NOT a drinking bar
+const NON_BAR_BLOCKLIST = [
+    'juice', 'smoothie', 'skyr', 'yogurt', 'yoghurt',
+    'burger', 'pizza', 'sushi', 'kebab', 'falafel',
+    'ravintola', 'ravintolat',   // Finnish for restaurant
+    'restaurang', 'restaurant',
+    '咖啡', 'café', 'cafe ', ' cafe', 'kaffe',   // Coffee shops
+    'bakery', 'bageri', 'bakteri',
+    'grocery', 'market', 'matvarer',
+    'thai ', ' thai', 'indian ', 'chinese', 'nepalese', 'nepalilain', 'xin ',
+    'laundry', 'laundromat',
+];
+
+function isLikelyDrinkingBar(name, categories) {
+    const nameLower = name.toLowerCase();
+
+    // Hard blocklist: names that are clearly not drinking venues
+    if (NON_BAR_BLOCKLIST.some(term => nameLower.includes(term))) {
+        // Allow "cafe bar", "bar & bistro" etc. only if name has "bar" AND blocklisted term
+        // But "Café Otsolahti" or "Jungle Juice Bar" → exclude
+        const hasDrinkingKeyword = /\bbar\b|\bpub\b|\btavern\b|\bbrewery\b|\bbrewpub\b|\bsaloon\b/.test(nameLower);
+        const hasOnlyFoodTerm = NON_BAR_BLOCKLIST.some(t => nameLower.includes(t));
+        // If name has "bar" but is clearly a juice/food bar, still block
+        const juiceOrFoodBar = /(juice|smoothie|skyr|burger|pizza|sushi|kebab|ravintola|restaur|bakery|kaffe)/.test(nameLower);
+        if (juiceOrFoodBar) return false;
+        if (!hasDrinkingKeyword && hasOnlyFoodTerm) return false;
+    }
+
+    // If primary category is Coffee Shop or Bakery but NOT bar/pub, skip
+    if (categories.length > 0) {
+        const primaryCat = (categories[0].Name || '').toLowerCase();
+        const hasBarPubCat = categories.some(c => {
+            const n = (c.Name || '').toLowerCase();
+            return n.includes('bar') || n.includes('pub') || n.includes('nightclub') || n.includes('nightlife');
+        });
+        const nonBarPrimaryTypes = ['coffee', 'bakery', 'fast food', 'chinese', 'japanese', 'thai', 'indian', 'pizza', 'sandwich'];
+        if (nonBarPrimaryTypes.some(t => primaryCat.includes(t)) && !hasBarPubCat) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 const CORS_HEADERS = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -115,6 +159,7 @@ function isBarCategory(name) {
 function mapItems(items, originLat, originLng) {
     return items
         .filter(item => item.Position && item.Title)
+        .filter(item => isLikelyDrinkingBar(item.Title, item.Categories || []))
         .map(item => {
             const [lon, lat] = item.Position;
             const cats = (item.Categories || []).map(c => (c.Name || '').toLowerCase());

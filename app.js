@@ -650,7 +650,13 @@ function completeCrawl() {
 
 function openInMaps() {
     const pub = state.pubs[state.currentStopIndex];
-    const destination = encodeURIComponent(`${pub.name}, ${pub.address || 'Stockholm'}`);
+    // Use exact coordinates when available – far more reliable than a text search
+    let destination;
+    if (Number.isFinite(pub.lat) && Number.isFinite(pub.lon)) {
+        destination = `${pub.lat},${pub.lon}`;
+    } else {
+        destination = encodeURIComponent(`${pub.name}, ${pub.address || 'Stockholm'}`);
+    }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=walking`;
     window.open(url, '_blank');
 }
