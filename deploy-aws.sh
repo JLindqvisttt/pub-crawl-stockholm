@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR"
 REGION="eu-north-1"
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-BUCKET_NAME="jl-pub-crawl-${ACCOUNT_ID}"
+BUCKET_NAME="jl-kroghoppen-${ACCOUNT_ID}"
 
 echo "🍺 Pub Crawl App - AWS Deploy"
 echo "================================"
@@ -63,11 +63,17 @@ echo ""
 echo "📤 Laddar upp filer till S3..."
 aws s3 sync "$APP_DIR" "s3://$BUCKET_NAME" \
     --delete \
+    --exclude "*" \
+    --include "index.html" \
+    --include "styles.css" \
+    --include "app.js" \
     --exclude "*.sh" \
     --exclude "*.backup" \
     --exclude "*.md" \
     --exclude ".env*" \
-    --exclude ".gitignore"
+    --exclude ".gitignore" \
+    --exclude ".git/*" \
+    --exclude ".github/*"
 
 echo "✓ Filer uppladdade"
 
