@@ -67,6 +67,7 @@ aws s3 sync "$APP_DIR" "s3://$BUCKET_NAME" \
     --include "index.html" \
     --include "styles.css" \
     --include "app.js" \
+    --include "js/*" \
     --exclude "*.sh" \
     --exclude "*.backup" \
     --exclude "*.md" \
