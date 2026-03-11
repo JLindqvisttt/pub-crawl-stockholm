@@ -23,7 +23,6 @@
     --shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.4);
     --glow: 0 0 24px rgba(99, 102, 241, 0.55);
     --glow-green: 0 0 20px rgba(16, 185, 129, 0.5);
-    --icon-tint: #a5b4fc;
 }
 
 body {
@@ -246,21 +245,6 @@ button {
 
 .btn-icon {
     margin-right: 0.5rem;
-}
-
-.ui-icon {
-    color: var(--icon-tint);
-    font-weight: 700;
-    margin-right: 0.35rem;
-}
-
-.detail .ui-icon {
-    margin-right: 0.3rem;
-}
-
-.primary-btn .ui-icon,
-.secondary-btn .ui-icon {
-    color: #c7d2fe;
 }
 
 .route-help-text {
