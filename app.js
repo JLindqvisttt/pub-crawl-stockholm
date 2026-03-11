@@ -339,9 +339,9 @@ function displayCurrentPub() {
     
     document.getElementById('currentPubName').textContent = pub.name;
     document.getElementById('currentPubAddress').textContent = pub.address || 'Stockholm';
-    document.getElementById('currentPubDistance').textContent = `Avstånd: ${pub.distanceFromPrevious} m`;
-    document.getElementById('currentPubTime').textContent = `Tid: ${pub.walkingTime} min`;
-    document.getElementById('currentPubType').textContent = `Typ: ${formatPubType(pub.type)}`;
+    document.getElementById('currentPubDistance').innerHTML = `<span class="ui-icon">⌖</span> ${pub.distanceFromPrevious} m`;
+    document.getElementById('currentPubTime').innerHTML = `<span class="ui-icon">◷</span> ${pub.walkingTime} min`;
+    document.getElementById('currentPubType').innerHTML = `<span class="ui-icon">◆</span> ${formatPubType(pub.type)}`;
     
     // Update pub type icon
     const icon = getPubTypeIcon(pub.type);
@@ -365,10 +365,10 @@ function displayNextPubs() {
             <h3>Stopp ${i + 1}: ${pub.name}</h3>
             <p class="pub-address">${pub.address || 'Stockholm'}</p>
             <div class="pub-details">
-                <span class="detail">Avstånd: ${pub.distanceFromPrevious} m från föregående</span>
-                <span class="detail">Tid: ${pub.walkingTime} min</span>
+                <span class="detail"><span class="ui-icon">⌖</span> ${pub.distanceFromPrevious} m från föregående</span>
+                <span class="detail"><span class="ui-icon">◷</span> ${pub.walkingTime} min</span>
             </div>
-            ${isLocked ? '<p class="unlock-message">Låses upp efter nästa check-in</p>' : ''}
+            ${isLocked ? '<p class="unlock-message"><span class="ui-icon">◌</span> Låses upp efter nästa check-in</p>' : ''}
         `;
         
         container.appendChild(card);
@@ -377,13 +377,13 @@ function displayNextPubs() {
 
 function getPubTypeIcon(type) {
     const icons = {
-        'bar': 'B',
-        'pub': 'P',
-        'nightclub': 'N',
-        'biergarten': 'P',
-        'tavern': 'T'
+        'bar': '▣',
+        'pub': '◆',
+        'nightclub': '✦',
+        'biergarten': '◆',
+        'tavern': '▣'
     };
-    return icons[type] || 'B';
+    return icons[type] || '◆';
 }
 
 function formatPubType(type) {

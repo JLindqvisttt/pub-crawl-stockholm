@@ -22,7 +22,7 @@
                 </span>
                 Kroghoppen
             </h1>
-            <button id="groupModeBtn" class="secondary-btn" disabled title="Kommer snart med serversync">Gänget (snart)</button>
+            <button id="groupModeBtn" class="secondary-btn" disabled title="Kommer snart med serversync"><span class="ui-icon">◉</span> Gänget (snart)</button>
         </header>
 
         <!-- Setup Screen -->
@@ -51,7 +51,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Antal stopp:</label>
+                    <label><span class="ui-icon">◎</span> Antal stopp:</label>
                     <div class="button-group">
                         <button class="option-btn" data-stops="3">3 pubar</button>
                         <button class="option-btn active" data-stops="5">5 pubar</button>
@@ -60,7 +60,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Prisnivå:</label>
+                    <label><span class="ui-icon">◌</span> Prisnivå:</label>
                     <div class="button-group">
                         <button class="option-btn active" data-price="budget">Budget</button>
                         <button class="option-btn" data-price="medium">Medium</button>
@@ -69,7 +69,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Område (valfritt):</label>
+                    <label><span class="ui-icon">⌖</span> Område (valfritt):</label>
                     <select id="neighborhoodFilter">
                         <option value="">Alla områden</option>
                         <option value="Södermalm">Södermalm</option>
@@ -83,9 +83,11 @@
 
                 <div class="button-row">
                     <button id="startCrawlBtn" class="primary-btn large glow" disabled>
+                        <span class="ui-icon">➤</span>
                         Smart rutt
                     </button>
                     <button id="randomCrawlBtn" class="secondary-btn large" disabled>
+                        <span class="ui-icon">◇</span>
                         Överraskningsrutt
                     </button>
                 </div>
@@ -108,19 +110,21 @@
             <div id="currentPubCard" class="card glass pub-card current">
                 <div class="pub-header">
                     <div class="pub-badge pulse">NUVARANDE STOPP</div>
-                    <div class="pub-type-icon" id="currentPubTypeIcon">B</div>
+                    <div class="pub-type-icon" id="currentPubTypeIcon">◆</div>
                 </div>
                 <h2 id="currentPubName">-</h2>
                 <p id="currentPubAddress" class="pub-address">-</p>
                 <div class="pub-details">
-                    <span id="currentPubDistance" class="detail">Avstand: -</span>
-                    <span id="currentPubTime" class="detail">Tid: -</span>
-                    <span id="currentPubType" class="detail">Typ: -</span>
+                    <span id="currentPubDistance" class="detail"><span class="ui-icon">⌖</span> -</span>
+                    <span id="currentPubTime" class="detail"><span class="ui-icon">◷</span> -</span>
+                    <span id="currentPubType" class="detail"><span class="ui-icon">◆</span> -</span>
                 </div>
                 <button id="checkInBtn" class="primary-btn large glow pulse-btn">
+                    <span class="ui-icon">✓</span>
                     Checka in
                 </button>
                 <button id="openMapsBtn" class="secondary-btn">
+                    <span class="ui-icon">⌖</span>
                     Öppna i Maps
                 </button>
             </div>
