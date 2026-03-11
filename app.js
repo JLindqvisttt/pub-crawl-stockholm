@@ -320,7 +320,7 @@ async function reverseGeocode(lat, lng) {
             locationName = address.city_district;
         }
         
-        updateLocationStatus('success', 'Redo att hoppa!', `Du ar i ${locationName}`);
+        updateLocationStatus('success', 'Redo att hoppa!', `Du är i ${locationName}`);
     } catch (error) {
         updateLocationStatus('success', 'Redo att hoppa!', 'GPS hittad!');
     }
