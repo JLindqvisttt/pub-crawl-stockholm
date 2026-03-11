@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kroghoppen 🍻</title>
+    <title>Kroghoppen</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
@@ -43,7 +43,7 @@
             <div class="card glass">
                 <p class="info-text" style="margin-bottom: 1rem;">Just nu styr en person rundan och resten följer samma stoppordning.</p>
                 <div class="location-status" id="locationStatus">
-                    <div class="status-icon">📍</div>
+                    <div class="status-icon">●</div>
                     <div class="status-text">
                         <span id="locationText">Hämtar din position...</span>
                         <span id="locationDetail" class="location-detail"></span>
@@ -108,21 +108,19 @@
             <div id="currentPubCard" class="card glass pub-card current">
                 <div class="pub-header">
                     <div class="pub-badge pulse">NUVARANDE STOPP</div>
-                    <div class="pub-type-icon" id="currentPubTypeIcon">🍺</div>
+                    <div class="pub-type-icon" id="currentPubTypeIcon">B</div>
                 </div>
                 <h2 id="currentPubName">-</h2>
                 <p id="currentPubAddress" class="pub-address">-</p>
                 <div class="pub-details">
-                    <span id="currentPubDistance" class="detail">📍 -</span>
-                    <span id="currentPubTime" class="detail">⏱ -</span>
-                    <span id="currentPubType" class="detail">🏷️ -</span>
+                    <span id="currentPubDistance" class="detail">Avstand: -</span>
+                    <span id="currentPubTime" class="detail">Tid: -</span>
+                    <span id="currentPubType" class="detail">Typ: -</span>
                 </div>
                 <button id="checkInBtn" class="primary-btn large glow pulse-btn">
-                    <span class="btn-icon">✓</span>
-                    Check in här
+                    Checka in
                 </button>
                 <button id="openMapsBtn" class="secondary-btn">
-                    <span class="btn-icon">🗺</span>
                     Öppna i Maps
                 </button>
             </div>

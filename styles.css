@@ -472,8 +472,17 @@ button {
 }
 
 .pub-type-icon {
-    font-size: 2rem;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #e0e7ff;
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(129, 140, 248, 0.4);
 }
 
 .pub-card h2 {
@@ -796,7 +805,9 @@ button {
 }
 
 .status-icon {
-    font-size: 2rem;
+    font-size: 1.4rem;
+    color: #818CF8;
+    line-height: 1;
     animation: pulse 2s ease-in-out infinite;
 }
 

@@ -339,9 +339,9 @@ function displayCurrentPub() {
     
     document.getElementById('currentPubName').textContent = pub.name;
     document.getElementById('currentPubAddress').textContent = pub.address || 'Stockholm';
-    document.getElementById('currentPubDistance').textContent = `📍 ${pub.distanceFromPrevious}m`;
-    document.getElementById('currentPubTime').textContent = `⏱ ${pub.walkingTime} min`;
-    document.getElementById('currentPubType').textContent = `🏷️ ${formatPubType(pub.type)}`;
+    document.getElementById('currentPubDistance').textContent = `Avstånd: ${pub.distanceFromPrevious} m`;
+    document.getElementById('currentPubTime').textContent = `Tid: ${pub.walkingTime} min`;
+    document.getElementById('currentPubType').textContent = `Typ: ${formatPubType(pub.type)}`;
     
     // Update pub type icon
     const icon = getPubTypeIcon(pub.type);
@@ -365,10 +365,10 @@ function displayNextPubs() {
             <h3>Stopp ${i + 1}: ${pub.name}</h3>
             <p class="pub-address">${pub.address || 'Stockholm'}</p>
             <div class="pub-details">
-                <span class="detail">📍 ${pub.distanceFromPrevious}m från föregående</span>
-                <span class="detail">⏱ ${pub.walkingTime} min</span>
+                <span class="detail">Avstånd: ${pub.distanceFromPrevious} m från föregående</span>
+                <span class="detail">Tid: ${pub.walkingTime} min</span>
             </div>
-            ${isLocked ? '<p class="unlock-message">🔒 Låses upp efter nästa check-in</p>' : ''}
+            ${isLocked ? '<p class="unlock-message">Låses upp efter nästa check-in</p>' : ''}
         `;
         
         container.appendChild(card);
@@ -377,13 +377,13 @@ function displayNextPubs() {
 
 function getPubTypeIcon(type) {
     const icons = {
-        'bar': '🍺',
-        'pub': '🍻',
-        'nightclub': '💃',
-        'biergarten': '🍻',
-        'tavern': '🍺'
+        'bar': 'B',
+        'pub': 'P',
+        'nightclub': 'N',
+        'biergarten': 'P',
+        'tavern': 'T'
     };
-    return icons[type] || '🍺';
+    return icons[type] || 'B';
 }
 
 function formatPubType(type) {
@@ -429,8 +429,8 @@ function checkIn() {
 function completeCrawl() {
     document.getElementById('currentPubCard').innerHTML = `
         <div style="text-align: center; padding: 2rem 0;">
-            <h2 style="font-size: 3rem; margin-bottom: 1rem;">🎉</h2>
-            <h2>Nattens hjälte!</h2>
+            <h2 style="font-size: 2.2rem; margin-bottom: 1rem;">Klart</h2>
+            <h2>Nattens hjälte</h2>
             <p>Du har klämt i alla stopp – det kallas kroghopp.</p>
             <button onclick="location.reload()" class="primary-btn large" style="margin-top: 2rem;">
                 Starta nytt hopp
@@ -540,10 +540,10 @@ function updateMap() {
             .bindPopup(`
                 <b>${index + 1}. ${pub.name}</b><br>
                 ${pub.address || 'Stockholm'}<br>
-                <small>${getPubTypeIcon(pub.type)} ${formatPubType(pub.type)}</small><br>
-                ${isCompleted ? '<span style="color: #06A77D;">✓ Besökt</span>' : ''}
-                ${isCurrent ? '<span style="color: #FF6B35;">⭐ Nuvarande</span>' : ''}
-                ${isNext ? '<span style="color: #FFA500;">→ Nästa</span>' : ''}
+                <small>Typ: ${formatPubType(pub.type)}</small><br>
+                ${isCompleted ? '<span style="color: #06A77D;">Besökt</span>' : ''}
+                ${isCurrent ? '<span style="color: #6366F1;">Nuvarande</span>' : ''}
+                ${isNext ? '<span style="color: #A78BFA;">Nästa</span>' : ''}
             `);
         
         if (isCurrent) {
@@ -566,11 +566,12 @@ function updateMap() {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 18px;
+                font-size: 14px;
+                font-weight: 700;
                 border: 3px solid white;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             ">
-                📍
+                S
             </div>
         `,
         iconSize: [36, 36],
