@@ -92,6 +92,11 @@ header h1 {
     box-shadow: 0 6px 14px rgba(99, 102, 241, 0.35);
 }
 
+.brand-icon svg {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
 @keyframes headerGlow {
     0%, 100% { transform: translate(0, 0); }
     50% { transform: translate(-20%, -20%); }
@@ -720,6 +725,11 @@ button {
     box-shadow: 0 12px 26px rgba(99, 102, 241, 0.35);
     margin-bottom: 1rem;
     animation: bounce 2s ease-in-out infinite;
+}
+
+.hero-icon svg {
+    width: 2.1rem;
+    height: 2.1rem;
 }
 
 @keyframes bounce {
