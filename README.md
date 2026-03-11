@@ -61,7 +61,70 @@ GitHub Pages deployas via GitHub Actions vid push till `main`.
 
 ## Möjliga nästa steg
 
-- Backend för riktig gruppsync
-- Inloggning
+Här är en konkret lista om du vill bygga vidare från nuvarande version.
+
+### 1) Riktig gruppfunktion mellan mobil och dator
+
+- Backend-API för grupper (`create`, `join`, `check-in`, `status`)
+- Databas för gruppstatus och rundor
+- Riktig synk mellan olika enheter
+
+Exempel på AWS-upplägg:
+- API Gateway
+- Lambda
+- DynamoDB
+
+### 2) Live-läge för gruppen
+
+- Livekarta: se var gruppmedlemmar befinner sig
+- Gemensam check-in feed (vem checkade in var)
+- Automatisk uppdatering utan manuell refresh
+
+Tekniskt kan det göras med:
+- WebSocket API (eller polling som enklare första steg)
+
+### 3) Roller i gruppen
+
+- Gruppledare som styr rundan
+- Deltagare som följer och checkar in
+- Möjlighet att låsa vissa val till ledaren
+
+### 4) Omröstning och beslut i appen
+
+- Rösta på nästa stopp
+- Rösta på att korta av/förlänga rundan
+- Tidsbegränsade omröstningar
+
+### 5) Historik och statistik
+
+- Spara tidigare rundor
+- Visa vilka ställen ni besökt mest
+- Gruppstatistik per kväll
+
+### 6) Inloggning och konton
+
+- Enkla användarkonton
+- Profil med namn/avatar
+- Koppla historik till användare
+
+På AWS kan detta göras med:
+- Cognito för autentisering
+
+### 7) Förbättrad kart- och platsdata
+
+- Smartare filtrering av ställen
+- Egna taggar (musik, kö, pris, öppettider)
+- Bättre fallback när ett API svarar långsamt
+
+### 8) Kvalitet och produktionsstabilitet
+
+- Enhetstester för ruttlogik
+- Logging och felspårning
+- Rate limiting och bättre felhantering i API-lagret
+
+### 9) Nice-to-have funktioner
+
 - Favoriter och sparade rundor
 - Betyg per ställe
+- Delningslänk till kvällens rutt
+- Pushnotiser när nästa stopp låses upp
