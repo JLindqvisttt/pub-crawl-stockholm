@@ -21,8 +21,6 @@ const state = {
 
 // Map instance
 let map = null;
-let liveMarker = null;
-let geoWatchId = null;
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -62,6 +60,7 @@ function initEventListeners() {
     // Crawl screen
     document.getElementById('checkInBtn').addEventListener('click', checkIn);
     document.getElementById('openMapsBtn').addEventListener('click', openInMaps);
+    document.getElementById('skipClosedBtn').addEventListener('click', skipClosedPub);
     document.getElementById('endCrawlBtn').addEventListener('click', endCrawl);
     
     // Group mode is intentionally disabled for now (single-leader flow only).
@@ -493,6 +492,29 @@ function displayNextPubs() {
     }
 }
 
+function skipClosedPub() {
+    const removed = state.pubs.splice(state.currentStopIndex, 1)[0];
+    state.skippedIds = state.skippedIds || [];
+    state.skippedIds.push(removed.id);
+
+    if (state.pubs.length === 0) {
+        document.getElementById('currentPubCard').innerHTML = `
+            <div style="text-align:center;padding:2rem 0;">
+                <h2>Inga fler barer hittades</h2>
+                <p>Testa att öka radien eller välj ett annat område.</p>
+            </div>`;
+        return;
+    }
+
+    updateProgress();
+    displayCurrentPub();
+    displayNextPubs();
+
+    const card = document.getElementById('currentPubCard');
+    card.style.animation = 'none';
+    setTimeout(() => { card.style.animation = 'slideUp 0.5s'; }, 10);
+}
+
 function checkIn() {
     const currentPub = state.pubs[state.currentStopIndex];
     state.checkedIn.push(currentPub.id);
@@ -607,13 +629,6 @@ function initMap() {
     if (map) {
         map.remove();
     }
-    liveMarker = null;
-
-    // Stop any previous watch
-    if (geoWatchId !== null) {
-        navigator.geolocation.clearWatch(geoWatchId);
-        geoWatchId = null;
-    }
     
     map = L.map('map').setView([state.userLocation.lat, state.userLocation.lng], 14);
     
@@ -623,40 +638,6 @@ function initMap() {
         maxZoom: 19
     }).addTo(map);
     
-    // Start live GPS tracking if available
-    if (navigator.geolocation) {
-        geoWatchId = navigator.geolocation.watchPosition(
-            (pos) => {
-                const latlng = [pos.coords.latitude, pos.coords.longitude];
-                if (!liveMarker) {
-                    const liveIcon = L.divIcon({
-                        className: 'live-marker',
-                        html: `
-                            <div style="
-                                width: 18px;
-                                height: 18px;
-                                border-radius: 50%;
-                                background: #4A90E2;
-                                border: 3px solid white;
-                                box-shadow: 0 0 0 4px rgba(74,144,226,0.35);
-                                animation: livePulse 1.8s ease-in-out infinite;
-                            "></div>
-                        `,
-                        iconSize: [18, 18],
-                        iconAnchor: [9, 9]
-                    });
-                    liveMarker = L.marker(latlng, { icon: liveIcon, zIndexOffset: 1000 })
-                        .addTo(map)
-                        .bindPopup('📍 Du är här');
-                } else {
-                    liveMarker.setLatLng(latlng);
-                }
-            },
-            null,
-            { enableHighAccuracy: true, maximumAge: 10000 }
-        );
-    }
-
     updateMap();
 }
 
@@ -821,16 +802,12 @@ function updateMap() {
     map.fitBounds(bounds, { padding: [30, 30] });
 }
 
-// Add CSS for marker animations
+// Add CSS for marker pulse animation
 const style = document.createElement('style');
 style.textContent = `
     @keyframes markerPulse {
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.1); opacity: 0.9; }
-    }
-    @keyframes livePulse {
-        0%, 100% { box-shadow: 0 0 0 4px rgba(74,144,226,0.35); }
-        50% { box-shadow: 0 0 0 8px rgba(74,144,226,0.15); }
     }
 `;
 document.head.appendChild(style);
