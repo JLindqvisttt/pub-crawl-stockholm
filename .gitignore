@@ -1,0 +1,5 @@
+.env
+*.backup
+node_modules/
+.DS_Store
+.aws-sam/

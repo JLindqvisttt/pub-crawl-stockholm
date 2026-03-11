@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stockholm Pub Crawl</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <h1>🍺 Stockholm Pub Crawl</h1>
+            <button id="groupModeBtn" class="secondary-btn">👥 Group Mode</button>
+        </header>
+
+        <!-- Setup Screen -->
+        <div id="setupScreen" class="screen active">
+            <div class="welcome-hero">
+                <div class="hero-icon">🍺</div>
+                <h2>Upptäck Stockholms bästa pubar</h2>
+                <p class="hero-subtitle">Vi hittar och optimerar den perfekta pub crawl-rutten åt dig!</p>
+            </div>
+            
+            <div class="card glass">
+                <div class="location-status" id="locationStatus">
+                    <div class="status-icon">📍</div>
+                    <div class="status-text">
+                        <span id="locationText">Hämtar din position...</span>
+                        <span id="locationDetail" class="location-detail"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🎯 Antal stopp:</label>
+                    <div class="button-group">
+                        <button class="option-btn" data-stops="3">3 pubar</button>
+                        <button class="option-btn active" data-stops="5">5 pubar</button>
+                        <button class="option-btn" data-stops="7">7 pubar</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>💰 Prisnivå:</label>
+                    <div class="button-group">
+                        <button class="option-btn active" data-price="budget">Budget</button>
+                        <button class="option-btn" data-price="medium">Medium</button>
+                        <button class="option-btn" data-price="all">Alla</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>📍 Område (valfritt):</label>
+                    <select id="neighborhoodFilter">
+                        <option value="">Alla områden</option>
+                        <option value="Södermalm">Södermalm</option>
+                        <option value="Vasastan">Vasastan</option>
+                        <option value="Gamla Stan">Gamla Stan</option>
+                        <option value="Östermalm">Östermalm</option>
+                        <option value="Norrmalm">Norrmalm</option>
+                        <option value="Kungsholmen">Kungsholmen</option>
+                    </select>
+                </div>
+
+                <div class="button-row">
+                    <button id="startCrawlBtn" class="primary-btn large glow" disabled>
+                        <span class="btn-icon">🎯</span>
+                        Starta min crawl!
+                    </button>
+                    <button id="randomCrawlBtn" class="secondary-btn large" disabled>
+                        <span class="btn-icon">🎲</span>
+                        Slumpa rutt
+                    </button>
+                </div>
+                <p id="setupError" class="error-msg"></p>
+            </div>
+        </div>
+
+        <!-- Crawl Screen -->
+        <div id="crawlScreen" class="screen">
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <p class="progress-text"><span id="currentStop">0</span> / <span id="totalStops">5</span> stopp</p>
+            </div>
+
+            <!-- Current Pub Card -->
+            <div id="currentPubCard" class="card glass pub-card current">
+                <div class="pub-header">
+                    <div class="pub-badge pulse">NUVARANDE STOPP</div>
+                    <div class="pub-type-icon" id="currentPubTypeIcon">🍺</div>
+                </div>
+                <h2 id="currentPubName">-</h2>
+                <p id="currentPubAddress" class="pub-address">-</p>
+                <div class="pub-details">
+                    <span id="currentPubDistance" class="detail">📍 -</span>
+                    <span id="currentPubTime" class="detail">⏱ -</span>
+                    <span id="currentPubType" class="detail">🏷️ -</span>
+                </div>
+                <button id="checkInBtn" class="primary-btn large glow pulse-btn">
+                    <span class="btn-icon">✓</span>
+                    Check in här
+                </button>
+                <button id="openMapsBtn" class="secondary-btn">
+                    <span class="btn-icon">🗺</span>
+                    Öppna i Maps
+                </button>
+            </div>
+
+            <!-- Map -->
+            <div class="card">
+                <h3>Karta till nästa pub</h3>
+                <div id="map"></div>
+            </div>
+
+            <!-- Next Pubs -->
+            <div id="nextPubsContainer"></div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button id="endCrawlBtn" class="secondary-btn">Avsluta crawl</button>
+            </div>
+        </div>
+
+        <!-- Group Mode Modal -->
+        <div id="groupModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Group Mode</h2>
+                
+                <div class="button-group">
+                    <button id="createGroupBtn" class="option-btn">Skapa grupp</button>
+                    <button id="joinGroupBtn" class="option-btn">Gå med i grupp</button>
+                </div>
+
+                <div id="createGroupSection" class="hidden">
+                    <p>Din gruppkod:</p>
+                    <div class="group-code-display">
+                        <span id="groupCode">-</span>
+                        <button id="copyCodeBtn" class="icon-btn">📋</button>
+                    </div>
+                    <p class="info-text">Dela denna kod med dina vänner!</p>
+                </div>
+
+                <div id="joinGroupSection" class="hidden">
+                    <input type="text" id="groupCodeInput" placeholder="Ange gruppkod" maxlength="6">
+                    <button id="joinGroupSubmitBtn" class="primary-btn">Gå med</button>
+                </div>
+
+                <div id="groupMembersSection" class="hidden">
+                    <h3>Gruppmedlemmar:</h3>
+                    <div id="groupMembersList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Söker efter pubar...</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
