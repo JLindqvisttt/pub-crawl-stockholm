@@ -603,34 +603,6 @@ button {
     border: 1px solid var(--border-color);
 }
 
-#planBModal .modal-content h2 {
-    margin-bottom: 0.4rem;
-}
-
-#planBModal .modal-content p {
-    color: var(--text-secondary);
-    margin-bottom: 0.8rem;
-}
-
-.planb-options {
-    display: grid;
-    gap: 0.65rem;
-}
-
-.planb-option-btn {
-    text-align: left;
-}
-
-.planb-option-btn strong,
-.planb-option-btn small {
-    display: block;
-}
-
-.modal-close {
-    margin-top: 1rem;
-    width: 100%;
-}
-
 .close {
     position: absolute;
     right: 1rem;
@@ -1134,28 +1106,6 @@ button {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-}
-
-.price-disclaimer {
-    margin-top: 0.65rem;
-    font-size: 0.78rem;
-    line-height: 1.4;
-    color: var(--text-secondary);
-}
-
-.open-now-toggle {
-    margin-top: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--text-primary);
-    font-weight: 700;
-}
-
-.open-now-toggle input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary-light);
 }
 
 /* Stops group - buttons with subtitle */
